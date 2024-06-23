@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@solana/web3.js": "^1.93.1",
+    "bs58": "^5.0.0",
+    "fs": "^0.0.1-security",
+    "tweetnacl": "^1.0.3",
+    "twisters": "^1.1.0"
+  }
+}
