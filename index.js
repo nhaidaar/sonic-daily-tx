@@ -81,8 +81,24 @@ function getKeypairFromPrivateKey(privateKey) {
   return sol.Keypair.fromSecretKey(decoded);
 }
 
-async function getSolanaBalance(fromKeypair) {
-  return connection.getBalance(fromKeypair.publicKey);
+// function getSolanaBalance(fromKeypair) async {
+//     try {
+//         const 
+//     } catch (error) {
+        
+//     }
+//   return connection.getBalance(fromKeypair.publicKey);
+// }
+
+const getSolanaBalance = (fromKeypair) => {
+    return new Promise(async (resolve) => {
+        try {
+            const balance = await connection.getBalance(fromKeypair.publicKey);
+            resolve(balance / sol.LAMPORTS_PER_SOL);
+        } catch (error) {
+            resolve('Error getting balance!');
+        }
+    });
 }
 
 const delay = (seconds) => {
@@ -110,7 +126,7 @@ const delay = (seconds) => {
         const amountToSend = 0.001;
         const delayBetweenRequests = 5; // in seconds
         const publicKey = keypair.publicKey.toBase58();
-        const initialBalance = (await getSolanaBalance(keypair)) / sol.LAMPORTS_PER_SOL;
+        const initialBalance = (await getSolanaBalance(keypair));
         
         twisters.put(`${publicKey}`, { 
             text: ` === ACCOUNT ${(index + 1)} ===
@@ -121,7 +137,7 @@ Status  : -
         });
 
         for (const [i, address] of randomAddresses.entries()) {
-            const balance = (await getSolanaBalance(keypair)) / sol.LAMPORTS_PER_SOL;
+            const balance = (await getSolanaBalance(keypair));
             const toPublicKey = new sol.PublicKey(address);
             
             try {
@@ -155,7 +171,7 @@ Status  : [${(i + 1)}/${randomAddresses.length}] Failed to send SOL to ${address
             await delay(delayBetweenRequests);
         }
 
-        const finalBalance = (await getSolanaBalance(keypair)) / sol.LAMPORTS_PER_SOL;
+        const finalBalance = (await getSolanaBalance(keypair));
         twisters.put(`${publicKey}`, { 
             active: false,
             text: ` === ACCOUNT ${(index + 1)} ===
