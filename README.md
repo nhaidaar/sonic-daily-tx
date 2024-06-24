@@ -2,8 +2,9 @@
 
 ## Features
 
+- **Claim 1 SOL Faucet** : Need 2Captcha key.
 - **Generate Random Addresses** : 100 Addresses by default.
-- **Send SOL** : 0.001 SOL by default.
+- **Send SOL** : 0.0009 SOL by default.
 - **Transaction Delay**: 5 seconds by default.
 - **Get Balance for Each Transaction**
 
@@ -23,3 +24,11 @@ npm install
 ```
 
 - Put your private key in `private.txt`
+
+- Put your 2captcha key in `index.js` line 8
+
+```
+const captchaKey = 'INSERT_YOUR_2CAPTCHA_KEY_HERE';
+```
+
+- Run script using `node index.js`
