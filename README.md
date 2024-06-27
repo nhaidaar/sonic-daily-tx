@@ -4,8 +4,11 @@
 
 - **Claim 1 SOL Faucet** : Need 2Captcha key.
 - **Generate Random Addresses** : 100 Addresses by default.
-- **Send SOL** : 0.0009 SOL by default.
+- **Send SOL** : 0.001 SOL by default.
 - **Transaction Delay**: 5 seconds by default.
+- **Daily Check In**
+- **Claim Transaction Milestones**
+- **Get User Info**
 - **Get Balance for Each Transaction**
 
 ## Installation
