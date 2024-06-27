@@ -163,19 +163,19 @@ const dailyCheckin = (keyPair, auth) => new Promise(async (resolve) => {
         if (data.data) {
             const transactionBuffer = Buffer.from(data.data.hash, "base64");
             const transaction = sol.Transaction.from(transactionBuffer);
-            const signature = await Tx(transaction, keyPair);
+            const signature = await sendTransaction(transaction, keyPair);
             const checkin = await fetch('https://odyssey-api.sonic.game/user/check-in', {
                 method: 'POST',
                 headers: {
                     ...defaultHeaders,
-                    'Authorization': `${auth}`
+                    'authorization': `${auth}`
                 },
                 body: JSON.stringify({
                     'hash': `${signature}`
                 })
             }).then(res => res.json());
-    
-            resolve('Successfully to check in.');
+            
+            resolve(`Successfully to check in, day ${checkin.data.accumulative_days}`);
         }
         resolve('Failed to check in.');
     } catch (error) {
@@ -185,6 +185,14 @@ const dailyCheckin = (keyPair, auth) => new Promise(async (resolve) => {
 
 const dailyMilestone = (auth, stage) => new Promise(async (resolve) => {
     try {
+        await fetch('https://odyssey-api.sonic.game/user/transactions/state/daily', {
+            method: 'GET',
+            headers: {
+              ...defaultHeaders,
+              'authorization': `${auth}`
+            },
+        });
+
         const data = await fetch('https://odyssey-api.sonic.game/user/transactions/rewards/claim', {
             method: 'POST',
             headers: {
@@ -263,7 +271,7 @@ const getUserInfo = (auth) => new Promise(async (resolve) => {
         const initialBalance = await getSolanaBalance(keypair);
                 
         const token = await getLoginToken(keypair);
-        const user = await getUserInfo(token);
+        let user = await getUserInfo(token);
 
         twisters.put(`${publicKey}`, { 
             text: ` === ACCOUNT ${(index + 1)} ===
@@ -346,6 +354,7 @@ Mystery Box  : ${user.ring_monitor}
 Status       : ${checkin}`
         });
         await delay(delayBetweenRequests);
+        user = await getUserInfo(token);
 
         // CLAIM MILESTONES
         twisters.put(`${publicKey}`, { 
@@ -367,17 +376,17 @@ Mystery Box  : ${user.ring_monitor}
 Status       : ${milestones}`
             });
             await delay(delayBetweenRequests);
+            user = await getUserInfo(token);
         }
 
         // DONE
-        const finalUser = await getUserInfo(token);
         twisters.put(`${publicKey}`, { 
             active: false,
             text: ` === ACCOUNT ${(index + 1)} ===
 Address      : ${publicKey}
 Balance      : ${finalBalance} SOL
-Points       : ${finalUser.ring}
-Mystery Box  : ${finalUser.ring_monitor}
+Points       : ${user.ring}
+Mystery Box  : ${user.ring_monitor}
 Status       : Done`
         });
     }
