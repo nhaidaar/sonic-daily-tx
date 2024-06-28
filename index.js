@@ -304,7 +304,7 @@ function extractAddressParts(address) {
             const randomAddresses = generateRandomAddresses(addressCount);
             const initialBalance = await getSolanaBalance(keypair);
                     
-            const token = await getLoginToken(keypair);
+            let token = await getLoginToken(keypair);
             const initialInfo = await getUserInfo(token);
     
             twisters.put(`${publicKey}`, { 
@@ -368,6 +368,7 @@ Status       : [${(i + 1)}/${randomAddresses.length}] Failed to send ${amountToS
                 await delay(delayBetweenRequests);
             }
             const finalBalance = await getSolanaBalance(keypair);
+            token = await getLoginToken(keypair);
     
             // CHECK IN TASK
             twisters.put(`${publicKey}`, { 
@@ -379,7 +380,6 @@ Mystery Box  : ${initialInfo.ring_monitor}
 Status       : Try to daily check in...`
             });
             const checkin = await dailyCheckin(keypair, token);
-            await delay(delayBetweenRequests);
             let info = await getUserInfo(token);
             twisters.put(`${publicKey}`, { 
                 text: ` === ACCOUNT ${(index + 1)} ===
@@ -409,11 +409,10 @@ Points       : ${info.ring}
 Mystery Box  : ${info.ring_monitor}
 Status       : ${milestones}`
                 });
-                await delay(delayBetweenRequests);
                 info = await getUserInfo(token);
             }
     
-            const msg = `Earned ${(initialInfo.ring_monitor - info.ring_monitor)} Mystery Box`;
+            const msg = `Earned ${(info.ring_monitor - initialInfo.ring_monitor)} Mystery Box`;
 
             if (q.useBot) {
                 await tgMessage(`${extractAddressParts(publicKey)} | ${msg}`);
