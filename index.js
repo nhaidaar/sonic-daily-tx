@@ -5,7 +5,7 @@ const bs58 = require("bs58");
 const prompts = require('prompts');
 const nacl = require("tweetnacl");
 
-const captchaKey = 'a9f61bf6769196a7350fe24a6d773047';
+const captchaKey = 'INSERT_YOUR_API_KEY_HERE';
 const rpc = 'https://devnet.sonic.game/';
 const connection = new sol.Connection(rpc, 'confirmed');
 const keypairs = [];
@@ -129,26 +129,33 @@ const claimFaucet = (address) => new Promise(async (resolve) => {
 });
 
 const getLoginToken = (keyPair) => new Promise(async (resolve) => {
-    const message = await fetch(`https://odyssey-api.sonic.game/auth/sonic/challenge?wallet=${keyPair.publicKey}`, {
-        headers: defaultHeaders
-    }).then(res => res.json());
+    let success = false;
 
-    const sign = nacl.sign.detached(Buffer.from(message.data), keyPair.secretKey);
-    const signature = Buffer.from(sign).toString('base64');
-    const publicKey = keyPair.publicKey.toBase58();
-    const addressEncoded = Buffer.from(keyPair.publicKey.toBytes()).toString("base64")
-    const authorize = await fetch('https://odyssey-api.sonic.game/auth/sonic/authorize', {
-        method: 'POST',
-        headers: defaultHeaders,
-        body: JSON.stringify({
-            'address': `${publicKey}`,
-            'address_encoded': `${addressEncoded}`,
-            'signature': `${signature}`
-        })
-    }).then(res => res.json());
-
-    const token = authorize.data.token;
-    resolve(token);
+    while (!success) {
+        try {
+            const message = await fetch(`https://odyssey-api.sonic.game/auth/sonic/challenge?wallet=${keyPair.publicKey}`, {
+                headers: defaultHeaders
+            }).then(res => res.json());
+        
+            const sign = nacl.sign.detached(Buffer.from(message.data), keyPair.secretKey);
+            const signature = Buffer.from(sign).toString('base64');
+            const publicKey = keyPair.publicKey.toBase58();
+            const addressEncoded = Buffer.from(keyPair.publicKey.toBytes()).toString("base64")
+            const authorize = await fetch('https://odyssey-api.sonic.game/auth/sonic/authorize', {
+                method: 'POST',
+                headers: defaultHeaders,
+                body: JSON.stringify({
+                    'address': `${publicKey}`,
+                    'address_encoded': `${addressEncoded}`,
+                    'signature': `${signature}`
+                })
+            }).then(res => res.json());
+        
+            const token = authorize.data.token;
+            success = true;
+            resolve(token);
+        } catch (e) {}
+    }
 });
 
 const dailyCheckin = (keyPair, auth) => new Promise(async (resolve) => {
@@ -239,6 +246,34 @@ const getUserInfo = (auth) => new Promise(async (resolve) => {
     }
 });
 
+const tgMessage = async (message) => {
+    const token = 'INSERT_YOUR_TELEGRAM_BOT_TOKEN_HERE';
+    const chatid = 'INSERT_YOUR_TELEGRAM_BOT_CHATID_HERE';
+    const boturl = `https://api.telegram.org/bot${token}/sendMessage`;
+
+    await fetch(boturl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            chat_id: chatid,
+            link_preview_options: {is_disabled: true},
+            text: message,
+        }),
+    });
+};
+
+function extractAddressParts(address) {
+    if (!/^(0x)?[0-9a-fA-F]{40}$/.test(address)) {
+      throw new Error('Invalid address format');
+    }
+  
+    const firstThree = address.slice(0, 4);
+    const lastFour = address.slice(-4);
+    return `${firstThree}...${lastFour}`;
+}
+
 (async () => {
     // GET PRIVATE KEY
     const listAccounts = readFileSync("./private.txt", "utf-8")
@@ -252,11 +287,18 @@ const getUserInfo = (auth) => new Promise(async (resolve) => {
     }
     
     // ASK TO CLAIM FAUCET
-    const q = await prompts({
-        type: 'confirm',
-        name: 'claim',
-        message: 'Claim Faucet? (need 2captcha key)',
-    });
+    const q = await prompts([
+        {
+            type: 'confirm',
+            name: 'claim',
+            message: 'Claim Faucet? (need 2captcha key)',
+        },
+        {
+            type: 'confirm',
+            name: 'useBot',
+            message: 'Use Telegram Bot as Notification?',
+        }
+    ]);
     
 
     // CUSTOM YOURS
@@ -265,129 +307,140 @@ const getUserInfo = (auth) => new Promise(async (resolve) => {
     const delayBetweenRequests = 5; // in seconds
 
     // DOING TASK FOR EACH PRIVATE KEY
-    for(const [index, keypair] of keypairs.entries()) {
-        const publicKey = keypair.publicKey.toBase58();
-        const randomAddresses = generateRandomAddresses(addressCount);
-        const initialBalance = await getSolanaBalance(keypair);
-                
-        const token = await getLoginToken(keypair);
-        let user = await getUserInfo(token);
-
-        twisters.put(`${publicKey}`, { 
-            text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${initialBalance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : -`
-        });
-
-        // CLAIM FAUCET
-        if (q.claim) {
-            const faucetStatus = await claimFaucet(keypair.publicKey.toBase58());
+    while (true) {
+        for(const [index, keypair] of keypairs.entries()) {
+            const publicKey = keypair.publicKey.toBase58();
+            const randomAddresses = generateRandomAddresses(addressCount);
+            const initialBalance = await getSolanaBalance(keypair);
+                    
+            const token = await getLoginToken(keypair);
+            const initialInfo = await getUserInfo(token);
+    
             twisters.put(`${publicKey}`, { 
                 text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${initialBalance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : ${faucetStatus}`
+    Address      : ${publicKey}
+    Balance      : ${initialBalance} SOL
+    Points       : ${initialInfo.ring}
+    Mystery Box  : ${initialInfo.ring_monitor}
+    Status       : -`
             });
-        }
-
-        // SENDING SOL
-        for (const [i, address] of randomAddresses.entries()) {
-            const balance = await getSolanaBalance(keypair);
-            const toPublicKey = new sol.PublicKey(address);
-            
-            try {
-                const transaction = new sol.Transaction().add(
-                    sol.SystemProgram.transfer({
-                        fromPubkey: keypair.publicKey,
-                        toPubkey: toPublicKey,
-                        lamports: amountToSend * sol.LAMPORTS_PER_SOL,
-                    })
-                );
-                await sendTransaction(transaction, keypair);
-                
+    
+            // CLAIM FAUCET
+            if (q.claim) {
+                const faucetStatus = await claimFaucet(keypair.publicKey.toBase58());
                 twisters.put(`${publicKey}`, { 
                     text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${balance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : [${(i + 1)}/${randomAddresses.length}] Successfully sent ${amountToSend} SOL to ${address}`
+    Address      : ${publicKey}
+    Balance      : ${initialBalance} SOL
+    Points       : ${initialInfo.ring}
+    Mystery Box  : ${initialInfo.ring_monitor}
+    Status       : ${faucetStatus}`
                 });
-
-            } catch (error) {
-
-                twisters.put(`${publicKey}`, { 
-                    text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${balance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : [${(i + 1)}/${randomAddresses.length}] Successfully sent ${amountToSend} SOL to ${address}`
-                });
-
             }
-            await delay(delayBetweenRequests);
-        }
-        const finalBalance = await getSolanaBalance(keypair);
-
-        // CHECK IN TASK
-        twisters.put(`${publicKey}`, { 
-            text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${finalBalance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : Try to daily check in...`
-        });
-        const checkin = await dailyCheckin(keypair, token);
-        twisters.put(`${publicKey}`, { 
-            text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${finalBalance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : ${checkin}`
-        });
-        await delay(delayBetweenRequests);
-        user = await getUserInfo(token);
-
-        // CLAIM MILESTONES
-        twisters.put(`${publicKey}`, { 
-            text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${finalBalance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : Try to claim milestones...`
-        });
-        for (let i = 1; i <= 3; i++) {
-            const milestones = await dailyMilestone(token, i);
+    
+            // SENDING SOL
+            for (const [i, address] of randomAddresses.entries()) {
+                const balance = await getSolanaBalance(keypair);
+                const toPublicKey = new sol.PublicKey(address);
+                
+                try {
+                    const transaction = new sol.Transaction().add(
+                        sol.SystemProgram.transfer({
+                            fromPubkey: keypair.publicKey,
+                            toPubkey: toPublicKey,
+                            lamports: amountToSend * sol.LAMPORTS_PER_SOL,
+                        })
+                    );
+                    await sendTransaction(transaction, keypair);
+                    
+                    twisters.put(`${publicKey}`, { 
+                        text: ` === ACCOUNT ${(index + 1)} ===
+    Address      : ${publicKey}
+    Balance      : ${balance} SOL
+    Points       : ${initialInfo.ring}
+    Mystery Box  : ${initialInfo.ring_monitor}
+    Status       : [${(i + 1)}/${randomAddresses.length}] Successfully sent ${amountToSend} SOL to ${address}`
+                    });
+    
+                } catch (error) {
+    
+                    twisters.put(`${publicKey}`, { 
+                        text: ` === ACCOUNT ${(index + 1)} ===
+    Address      : ${publicKey}
+    Balance      : ${balance} SOL
+    Points       : ${initialInfo.ring}
+    Mystery Box  : ${initialInfo.ring_monitor}
+    Status       : [${(i + 1)}/${randomAddresses.length}] Failed to send ${amountToSend} SOL to ${address}`
+                    });
+    
+                }
+                await delay(delayBetweenRequests);
+            }
+            const finalBalance = await getSolanaBalance(keypair);
+    
+            // CHECK IN TASK
             twisters.put(`${publicKey}`, { 
                 text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${finalBalance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : ${milestones}`
+    Address      : ${publicKey}
+    Balance      : ${finalBalance} SOL
+    Points       : ${initialInfo.ring}
+    Mystery Box  : ${initialInfo.ring_monitor}
+    Status       : Try to daily check in...`
             });
+            const checkin = await dailyCheckin(keypair, token);
             await delay(delayBetweenRequests);
-            user = await getUserInfo(token);
+            let info = await getUserInfo(token);
+            twisters.put(`${publicKey}`, { 
+                text: ` === ACCOUNT ${(index + 1)} ===
+    Address      : ${publicKey}
+    Balance      : ${finalBalance} SOL
+    Points       : ${info.ring}
+    Mystery Box  : ${info.ring_monitor}
+    Status       : ${checkin}`
+            });
+    
+            // CLAIM MILESTONES
+            twisters.put(`${publicKey}`, { 
+                text: ` === ACCOUNT ${(index + 1)} ===
+    Address      : ${publicKey}
+    Balance      : ${finalBalance} SOL
+    Points       : ${info.ring}
+    Mystery Box  : ${info.ring_monitor}
+    Status       : Try to claim milestones...`
+            });
+            for (let i = 1; i <= 3; i++) {
+                const milestones = await dailyMilestone(token, i);
+                twisters.put(`${publicKey}`, { 
+                    text: ` === ACCOUNT ${(index + 1)} ===
+    Address      : ${publicKey}
+    Balance      : ${finalBalance} SOL
+    Points       : ${info.ring}
+    Mystery Box  : ${info.ring_monitor}
+    Status       : ${milestones}`
+                });
+                await delay(delayBetweenRequests);
+                info = await getUserInfo(token);
+            }
+    
+            const msg = `Earned ${(initialInfo.ring_monitor - info.ring_monitor)} Mystery Box`;
+
+            if (q.useBot) {
+                await tgMessage(`${extractAddressParts(publicKey)} | ${msg}`);
+            }
+    
+            // DONE
+            twisters.put(`${publicKey}`, { 
+                active: false,
+                text: ` === ACCOUNT ${(index + 1)} ===
+    Address      : ${publicKey}
+    Balance      : ${finalBalance} SOL
+    Points       : ${info.ring}
+    Mystery Box  : ${info.ring_monitor}
+    Status       : ${msg}`
+            });
         }
 
-        // DONE
-        twisters.put(`${publicKey}`, { 
-            active: false,
-            text: ` === ACCOUNT ${(index + 1)} ===
-Address      : ${publicKey}
-Balance      : ${finalBalance} SOL
-Points       : ${user.ring}
-Mystery Box  : ${user.ring_monitor}
-Status       : Done`
-        });
+        console.log('Waiting 24 hrs for next claim.');
+        await delay(24*60*60);
     }
 })();

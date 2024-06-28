@@ -10,6 +10,7 @@
 - **Claim Transaction Milestones**
 - **Get User Info**
 - **Get Balance for Each Transaction**
+- **Integrate with Telegram Bot as Notification**
 
 ## Installation
 
@@ -32,6 +33,13 @@ npm install
 
 ```
 const captchaKey = 'INSERT_YOUR_2CAPTCHA_KEY_HERE';
+```
+
+- If you want to use telegram bot as notification, put your bot token and chat_id in `index.js` line 250, 251
+
+```
+const token = 'INSERT_YOUR_TELEGRAM_BOT_TOKEN_HERE';
+const chatid = 'INSERT_YOUR_TELEGRAM_BOT_CHATID_HERE';
 ```
 
 - Run script using `node index.js`
