@@ -221,28 +221,21 @@ const dailyMilestone = (auth, stage) => new Promise(async (resolve) => {
 });
 
 const getUserInfo = (auth) => new Promise(async (resolve) => {
-    try {
-        const data = await fetch('https://odyssey-api.sonic.game/user/rewards/info', {
-            headers: {
-              ...defaultHeaders,
-              'authorization': `${auth}`,
+    let success = false;
+    while (!success) {
+        try {
+            const data = await fetch('https://odyssey-api.sonic.game/user/rewards/info', {
+                headers: {
+                  ...defaultHeaders,
+                  'authorization': `${auth}`,
+                }
+            }).then(res => res.json());
+            
+            if (data.data) {
+                success = true;
+                resolve(data.data);
             }
-        }).then(res => res.json());
-        
-        if (data.data) {
-            resolve(data.data);
-        }
-        resolve({
-            "wallet_balance": '-',
-            "ring": '-',
-            "ring_monitor": '-'
-        });
-    } catch (error) {
-        resolve({
-            "wallet_balance": '-',
-            "ring": '-',
-            "ring_monitor": '-'
-        });
+        } catch (error) {}
     }
 });
 
