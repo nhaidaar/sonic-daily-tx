@@ -251,24 +251,22 @@ const tgMessage = async (message) => {
     const chatid = 'INSERT_YOUR_TELEGRAM_BOT_CHATID_HERE';
     const boturl = `https://api.telegram.org/bot${token}/sendMessage`;
 
-    await fetch(boturl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            chat_id: chatid,
-            link_preview_options: {is_disabled: true},
-            text: message,
-        }),
-    });
+    try {
+        await fetch(boturl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: chatid,
+                link_preview_options: {is_disabled: true},
+                text: message,
+            }),
+        });
+    } catch (error) {}
 };
 
 function extractAddressParts(address) {
-    if (!/^(0x)?[0-9a-fA-F]{40}$/.test(address)) {
-      throw new Error('Invalid address format');
-    }
-  
     const firstThree = address.slice(0, 4);
     const lastFour = address.slice(-4);
     return `${firstThree}...${lastFour}`;
@@ -318,11 +316,11 @@ function extractAddressParts(address) {
     
             twisters.put(`${publicKey}`, { 
                 text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${initialBalance} SOL
-    Points       : ${initialInfo.ring}
-    Mystery Box  : ${initialInfo.ring_monitor}
-    Status       : -`
+Address      : ${publicKey}
+Balance      : ${initialBalance} SOL
+Points       : ${initialInfo.ring}
+Mystery Box  : ${initialInfo.ring_monitor}
+Status       : -`
             });
     
             // CLAIM FAUCET
@@ -330,11 +328,11 @@ function extractAddressParts(address) {
                 const faucetStatus = await claimFaucet(keypair.publicKey.toBase58());
                 twisters.put(`${publicKey}`, { 
                     text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${initialBalance} SOL
-    Points       : ${initialInfo.ring}
-    Mystery Box  : ${initialInfo.ring_monitor}
-    Status       : ${faucetStatus}`
+Address      : ${publicKey}
+Balance      : ${initialBalance} SOL
+Points       : ${initialInfo.ring}
+Mystery Box  : ${initialInfo.ring_monitor}
+Status       : ${faucetStatus}`
                 });
             }
     
@@ -355,22 +353,22 @@ function extractAddressParts(address) {
                     
                     twisters.put(`${publicKey}`, { 
                         text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${balance} SOL
-    Points       : ${initialInfo.ring}
-    Mystery Box  : ${initialInfo.ring_monitor}
-    Status       : [${(i + 1)}/${randomAddresses.length}] Successfully sent ${amountToSend} SOL to ${address}`
+Address      : ${publicKey}
+Balance      : ${balance} SOL
+Points       : ${initialInfo.ring}
+Mystery Box  : ${initialInfo.ring_monitor}
+Status       : [${(i + 1)}/${randomAddresses.length}] Successfully sent ${amountToSend} SOL to ${address}`
                     });
     
                 } catch (error) {
     
                     twisters.put(`${publicKey}`, { 
                         text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${balance} SOL
-    Points       : ${initialInfo.ring}
-    Mystery Box  : ${initialInfo.ring_monitor}
-    Status       : [${(i + 1)}/${randomAddresses.length}] Failed to send ${amountToSend} SOL to ${address}`
+Address      : ${publicKey}
+Balance      : ${balance} SOL
+Points       : ${initialInfo.ring}
+Mystery Box  : ${initialInfo.ring_monitor}
+Status       : [${(i + 1)}/${randomAddresses.length}] Failed to send ${amountToSend} SOL to ${address}`
                     });
     
                 }
@@ -381,42 +379,42 @@ function extractAddressParts(address) {
             // CHECK IN TASK
             twisters.put(`${publicKey}`, { 
                 text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${finalBalance} SOL
-    Points       : ${initialInfo.ring}
-    Mystery Box  : ${initialInfo.ring_monitor}
-    Status       : Try to daily check in...`
+Address      : ${publicKey}
+Balance      : ${finalBalance} SOL
+Points       : ${initialInfo.ring}
+Mystery Box  : ${initialInfo.ring_monitor}
+Status       : Try to daily check in...`
             });
             const checkin = await dailyCheckin(keypair, token);
             await delay(delayBetweenRequests);
             let info = await getUserInfo(token);
             twisters.put(`${publicKey}`, { 
                 text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${finalBalance} SOL
-    Points       : ${info.ring}
-    Mystery Box  : ${info.ring_monitor}
-    Status       : ${checkin}`
+Address      : ${publicKey}
+Balance      : ${finalBalance} SOL
+Points       : ${info.ring}
+Mystery Box  : ${info.ring_monitor}
+Status       : ${checkin}`
             });
     
             // CLAIM MILESTONES
             twisters.put(`${publicKey}`, { 
                 text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${finalBalance} SOL
-    Points       : ${info.ring}
-    Mystery Box  : ${info.ring_monitor}
-    Status       : Try to claim milestones...`
+Address      : ${publicKey}
+Balance      : ${finalBalance} SOL
+Points       : ${info.ring}
+Mystery Box  : ${info.ring_monitor}
+Status       : Try to claim milestones...`
             });
             for (let i = 1; i <= 3; i++) {
                 const milestones = await dailyMilestone(token, i);
                 twisters.put(`${publicKey}`, { 
                     text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${finalBalance} SOL
-    Points       : ${info.ring}
-    Mystery Box  : ${info.ring_monitor}
-    Status       : ${milestones}`
+Address      : ${publicKey}
+Balance      : ${finalBalance} SOL
+Points       : ${info.ring}
+Mystery Box  : ${info.ring_monitor}
+Status       : ${milestones}`
                 });
                 await delay(delayBetweenRequests);
                 info = await getUserInfo(token);
@@ -432,11 +430,11 @@ function extractAddressParts(address) {
             twisters.put(`${publicKey}`, { 
                 active: false,
                 text: ` === ACCOUNT ${(index + 1)} ===
-    Address      : ${publicKey}
-    Balance      : ${finalBalance} SOL
-    Points       : ${info.ring}
-    Mystery Box  : ${info.ring_monitor}
-    Status       : ${msg}`
+Address      : ${publicKey}
+Balance      : ${finalBalance} SOL
+Points       : ${info.ring}
+Mystery Box  : ${info.ring_monitor}
+Status       : ${msg}`
             });
         }
 
