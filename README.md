@@ -42,4 +42,4 @@ const token = 'INSERT_YOUR_TELEGRAM_BOT_TOKEN_HERE';
 const chatid = 'INSERT_YOUR_TELEGRAM_BOT_CHATID_HERE';
 ```
 
-- Run script using `node index.js`
+- Run script using `node index.js` or `node without_check_balance.js` for doing task without check balance
