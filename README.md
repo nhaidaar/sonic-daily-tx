@@ -40,7 +40,7 @@ npm install
 const captchaKey = 'INSERT_YOUR_2CAPTCHA_KEY_HERE';
 ```
 
-- If you want to use telegram bot as notification, put your bot token and chat_id in `index.js` line 250, 251
+- If you want to use telegram bot as notification, put your bot token and chat_id in `index.js` line 291, 292
 
 ```
 const token = 'INSERT_YOUR_TELEGRAM_BOT_TOKEN_HERE';
