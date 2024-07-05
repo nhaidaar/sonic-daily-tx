@@ -1,16 +1,21 @@
 # SONIC DAILY TRANSACTION HELPER
 
+<hr>
+
+### ⭐💻 Feel free to star this repository and help development by pull request ~
+
+<hr>
+
 ## Features
 
 - **Claim 1 SOL Faucet** : Need 2Captcha key.
 - **Generate Random Addresses** : 100 Addresses by default.
 - **Send SOL** : 0.001 SOL by default.
 - **Transaction Delay**: 5 seconds by default.
-- **Daily Check In**
-- **Claim Transaction Milestones**
-- **Get User Info**
-- **Get Balance for Each Transaction**
-- **Integrate with Telegram Bot as Notification**
+- **Daily Check In**: Earn 1-2 Mystery Box.
+- **Claim Transaction Milestones**: Earn 2-6 Mystery Box.
+- **Get User Info**: Get points and boxes count.
+- **Integrate with Telegram Bot as Notification**: Make alert of claimed account.
 
 ## Installation
 
@@ -42,4 +47,4 @@ const token = 'INSERT_YOUR_TELEGRAM_BOT_TOKEN_HERE';
 const chatid = 'INSERT_YOUR_TELEGRAM_BOT_CHATID_HERE';
 ```
 
-- Run script using `node index.js` or `node without_check_balance.js` for doing task without check balance
+- Run script using `node index.js`
