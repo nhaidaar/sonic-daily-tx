@@ -349,9 +349,9 @@ function extractAddressParts(address) {
     
 
     // CUSTOM YOURS
-    const addressCount = 0;
+    const addressCount = 100;
     const amountToSend = 0.001; // in SOL
-    const delayBetweenRequests = 3; // in seconds
+    const delayBetweenRequests = 5; // in seconds
 
     // DOING TASK FOR EACH PRIVATE KEY
         for(let index = (q.index - 1); index < keypairs.length; index++) {
