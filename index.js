@@ -40,9 +40,17 @@ function getKeypairFromPrivateKey(privateKey) {
     return sol.Keypair.fromSecretKey(decoded);
 }
 
-const sendTransaction = (transaction, keypair) => new Promise(async (resolve) => {
-    const hash = await sol.sendAndConfirmTransaction(connection, transaction, [keypair]);
-    resolve(hash);
+const sendTransaction = (transaction, keyPair) => new Promise(async (resolve) => {
+    try {
+        transaction.partialSign(keyPair);
+        const rawTransaction = transaction.serialize();
+        const signature = await connection.sendRawTransaction(rawTransaction);
+        await connection.confirmTransaction(signature);
+        // const hash = await sol.sendAndConfirmTransaction(connection, transaction, [keyPair]);
+        resolve(signature);
+    } catch (error) {
+        resolve(error);
+    }
 });
 
 const delay = (seconds) => {
@@ -229,44 +237,41 @@ const dailyMilestone = (auth, stage) => new Promise(async (resolve) => {
     }
 });
 
-// const openBox = (keyPair, auth) => new Promise(async (resolve) => {
-//     let success = false;
-//     while (!success) {
-//         try {
-//             const data = await fetch(`https://odyssey-api.sonic.game/user/rewards/mystery-box/build-tx`, {
-//                 headers: {
-//                     ...defaultHeaders,
-//                     'authorization': `${auth}`
-//                 }
-//             }).then(res => res.json());
+const openBox = (keyPair, auth) => new Promise(async (resolve) => {
+    let success = false;
+    while (!success) {
+        try {
+            const data = await fetch(`https://odyssey-api.sonic.game/user/rewards/mystery-box/build-tx`, {
+                headers: {
+                    ...defaultHeaders,
+                    'authorization': auth
+                }
+            }).then(res => res.json());
 
-//             console.log(data);
+            if (data.data) {
+                const transactionBuffer = Buffer.from(data.data.hash, "base64");
+                const transaction = sol.Transaction.from(transactionBuffer);
+                transaction.partialSign(keyPair);
+                const signature = await sendTransaction(transaction, keyPair);
+                const open = await fetch('https://odyssey-api.sonic.game/user/rewards/mystery-box/open', {
+                    method: 'POST',
+                    headers: {
+                        ...defaultHeaders,
+                        'authorization': auth
+                    },
+                    body: JSON.stringify({
+                        'hash': signature
+                    })
+                }).then(res => res.json());
 
-//             if (data.data) {
-//                 const transactionBuffer = Buffer.from(data.data.hash, "base64");
-//                 const transaction = sol.Transaction.from(transactionBuffer);
-//                 const signature = await sendTransaction(transaction, keyPair);
-//                 const open = await fetch('https://odyssey-api.sonic.game/user/rewards/mystery-box/open', {
-//                     method: 'POST',
-//                     headers: {
-//                         ...defaultHeaders,
-//                         'authorization': `${auth}`
-//                     },
-//                     body: JSON.stringify({
-//                         'hash': `${signature}`
-//                     })
-//                 }).then(res => res.json());
-
-//                 console.log(open);
-                
-//                 success = true;
-//                 resolve(open.data);
-//             }
-//         } catch (e) {
-//             console.log(e);
-//         }
-//     }
-// });
+                if (open.data) {
+                    success = true;
+                    resolve(open.data.amount);
+                }
+            }
+        } catch (e) {}
+    }
+});
 
 const getUserInfo = (auth) => new Promise(async (resolve) => {
     let success = false;
@@ -330,11 +335,11 @@ function extractAddressParts(address) {
             name: 'claim',
             message: 'Claim Faucet? (need 2captcha key)',
         },
-        // {
-        //     type: 'confirm',
-        //     name: 'openBox',
-        //     message: 'Auto Open Mystery Box?',
-        // },
+        {
+            type: 'confirm',
+            name: 'openBox',
+            message: 'Auto Open Mystery Box?',
+        },
         {
             type: 'confirm',
             name: 'useBot',
@@ -477,33 +482,32 @@ Status       : ${milestones}`
             info = await getUserInfo(token);
             let msg = `Earned ${(info.ring_monitor - initialInfo.ring_monitor)} Mystery Box\nYou have ${info.ring} Points and ${info.ring_monitor} Mystery Box now.`;
 
-//             if (q.openBox) {
-//                 twisters.put(`${publicKey}`, { 
-//                     active: false,
-//                     text: ` === ACCOUNT ${(index + 1)} ===
-// Address      : ${publicKey}
-// Points       : ${info.ring}
-// Mystery Box  : ${info.ring_monitor}
-// Status       : Preparing for open ${info.ring_monitor} mystery boxes...`
-//                 });
+            if (q.openBox) {
+                const totalBox = info.ring_monitor;
+                twisters.put(`${publicKey}`, { 
+                    text: `=== ACCOUNT ${(index + 1)} ===
+Address      : ${publicKey}
+Points       : ${info.ring}
+Mystery Box  : ${info.ring_monitor}
+Status       : Preparing for open ${totalBox} mystery boxes...`
+                });
 
-//                 for (let i = 0; i < info.ring_monitor; i++) {
-//                     const openedBox = await openBox(keypairs[index], token);
-//                     info = await getUserInfo(token);
-//                     twisters.put(`${publicKey}`, { 
-//                         active: false,
-//                         text: ` === ACCOUNT ${(index + 1)} ===
-// Address      : ${publicKey}
-// Points       : ${info.ring}
-// Mystery Box  : ${info.ring_monitor}
-// Status       : [${(i + 1)}/${info.ring_monitor}] You got ${openedBox.amount} points!`
-//                     });
-//                     await delay(delayBetweenRequests);
-//                 }
+                for (let i = 0; i < totalBox; i++) {
+                    const openedBox = await openBox(keypairs[index], token);
+                    info = await getUserInfo(token);
+                    twisters.put(`${publicKey}`, { 
+                        text: ` === ACCOUNT ${(index + 1)} ===
+Address      : ${publicKey}
+Points       : ${info.ring}
+Mystery Box  : ${info.ring_monitor}
+Status       : [${(i + 1)}/${totalBox}] You got ${openedBox} points!`
+                    });
+                    await delay(delayBetweenRequests);
+                }
 
-//                 info = await getUserInfo(token);
-//                 msg = `Earned ${(info.ring - initialInfo.ring)} Points\nYou have ${info.ring} Points and ${info.ring_monitor} Mystery Box now.`;
-//             }
+                info = await getUserInfo(token);
+                msg = `Earned ${(info.ring - initialInfo.ring)} Points\nYou have ${info.ring} Points and ${info.ring_monitor} Mystery Box now.`;
+            }
                 
             if (q.useBot) {
                 await tgMessage(`${extractAddressParts(publicKey)} | ${msg}`);
